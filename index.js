@@ -1,5 +1,6 @@
 const inquirer = require('inquirer');
 const connection = require('./routes/server.js'); 
+const cTable = require('console.table');
 
 connection.connect((error) => {
     if (error) throw error;
@@ -66,18 +67,36 @@ else if (choices == "Update Employee Role") {
 };
 const renderAllDepartments = () => {
     connection.query('SELECT * FROM department', function (err, results) {
-        console.log(results);
+        console.table(results);
         initialQuestions();
       })
 };
 function renderAllRoles(){
-    connection.query('SELECT * FROM role', function (err, results) {
-        console.log(results);
+    connection.query(`SELECT role.role_id, role.title, role.salary, department.department_name AS department
+    FROM role
+    INNER JOIN department ON role.department_id = department.department_id`, function (err, results) {
+        console.table(results);
         initialQuestions();
       });
 }
 function renderAllEmployees(){
-    connection.query('SELECT * FROM employees', function (err, results) {
+    connection.query(
+        `SELECT employees.employee_id, 
+        employees.first_name, 
+        employees.last_name, 
+        employees.manager_id,
+        role.title, 
+        department.department_name AS 'department', 
+        role.salary
+        FROM employees, role, department 
+        WHERE department.department_id = role.department_id 
+        AND role.role_id = employees.role_id`,
+    
+    //     `SELECT employees.employee_id, employees.first_name, employees.last_name, employees.manager_id, 
+    //  role.title AS role
+    //  FROM employees
+    //  INNER JOIN role ON employees.role_id = role.role_id`,
+     function (err, results) {
         console.table(results);
         initialQuestions();
       });
@@ -92,7 +111,7 @@ const addDepartment = () => {
     ])
     .then(response => {
         const newDepartment = [response.name] 
-        console.log(newDepartment);
+        cTable(newDepartment);
         connection.connect(function(err) {
             if (err) throw err;
             var sql = "INSERT INTO department (department_name) VALUES (?)";
@@ -103,7 +122,7 @@ const addDepartment = () => {
             });
           });
     })}
-    const addRole = (roledata) => {
+    const addRole = () => {
         inquirer.prompt([
             {
                 type: 'input',
@@ -119,24 +138,21 @@ const addDepartment = () => {
                 type: 'list',
                 name: 'department',
                 message: "What is the employee's department?",
-                choices: [
-                    'Engineering',
-                    'Finance',
-                    'Legal',
-                    'Sales'
-                ]
+                choices: newDepartment
+                      
+                
             }
         ])
         .then(response => {
       const newRole = [response.name, response.salary, response.department] 
-      console.log(newRole);
+      console.table(newRole);
       connection.connect(function(err) {
         if (err) throw err;
         var sql = "INSERT INTO role (title, salary, department_id) VALUES (?,?,?)";
         connection.query(sql, newRole, (err, result) => {
           if (err) throw err;
-          console.log("New role has been added");
-        //   initialQuestions();
+          console.table("New role has been added");
+           initialQuestions();
         });
       });
     })}
@@ -166,6 +182,15 @@ const addDepartment = () => {
         .then(response => {
             const newEmployee = [response.firstName, response.lastName, response.role, response.manager] 
             console.log(newEmployee);
+            connection.connect(function(err) {
+                if (err) throw err;
+                var sql = "INSERT INTO employees (first_name, last_name, role_id, employee_id) VALUES (?,?,?,?)";
+                connection.query(sql, newEmployee, (err, result) => {
+                  if (err) throw err;
+                  console.table("New employee has been added");
+                   initialQuestions();
+                });
+              });
         })}
         function updateEmployee(){
         }
