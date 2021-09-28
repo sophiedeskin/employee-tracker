@@ -1,6 +1,8 @@
 const inquirer = require('inquirer');
 const connection = require('./routes/server.js'); 
 const cTable = require('console.table');
+const { listenerCount } = require('process');
+const { response } = require('express');
 
 connection.connect((error) => {
     if (error) throw error;
@@ -111,7 +113,7 @@ const addDepartment = () => {
     ])
     .then(response => {
         const newDepartment = [response.name] 
-        cTable(newDepartment);
+        console.table(newDepartment);
         connection.connect(function(err) {
             if (err) throw err;
             var sql = "INSERT INTO department (department_name) VALUES (?)";
@@ -123,6 +125,14 @@ const addDepartment = () => {
           });
     })}
     const addRole = () => {
+        connection.query('SELECT * FROM department', 
+    function (err, results) {
+        // console.log(results);
+        let allDepartments = [];
+        for (let i = 0; i < results.length; i++) {
+        allDepartments.push({name: results[i].department_name, value: results[i].department_id})
+        }
+        // console.log(allDepartments)
         inquirer.prompt([
             {
                 type: 'input',
@@ -135,28 +145,36 @@ const addDepartment = () => {
                 message: "What is the salary for this role?",
             },
             {
-                type: 'list',
-                name: 'department',
-                message: "What is the employee's department?",
-                choices: newDepartment
-                      
-                
+                type: "list",
+                name: "department",
+                message: "Departments",
+                choices: allDepartments
             }
         ])
         .then(response => {
-      const newRole = [response.name, response.salary, response.department] 
-      console.table(newRole);
-      connection.connect(function(err) {
-        if (err) throw err;
-        var sql = "INSERT INTO role (title, salary, department_id) VALUES (?,?,?)";
-        connection.query(sql, newRole, (err, result) => {
-          if (err) throw err;
-          console.table("New role has been added");
-           initialQuestions();
-        });
-      });
-    })}
+            const newRole = [response.name, response.salary, response.department] 
+            console.table(newRole);
+            connection.connect(function(err) {
+                if (err) throw err;
+                var sql = "INSERT INTO role (title, salary, department_id) VALUES (?,?,?)";
+                connection.query(sql, newRole, (err, result) => {
+                    if (err) throw err;
+                    console.table("New role has been added");
+                    initialQuestions();
+                });
+            });
+        })}
+        )}
+        let answer = new Object();
     const addEmployee = () => {
+        connection.query('SELECT * FROM role', 
+        function (err, results) {
+            // console.log(results);
+            let allRoles = [];
+            for (let i = 0; i < results.length; i++) {
+    
+            allRoles.push({name: results[i].role_title, value: results[i].role_id})
+            }
         inquirer.prompt([
             {
                 type: 'input',
@@ -169,18 +187,36 @@ const addDepartment = () => {
                 message: "What is the employee's last name?",
             },
             {
-                type: 'input',
+                type: 'list',
                 name: 'role',
                 message: "What is the employee's role?",
-            },
-            {
-                type: 'input',
-                name: 'manager',
-                message: "Who is the employees manager?",
+                choices: allRoles
             }
         ])
+        .then (res => {
+                answer.firstname = res.firstName;
+                answer.lastname = res.lastName;
+                answer.role = res.role;
+            connection.query('SELECT * FROM employees',
+            function (err, results) {
+                // console.log(results);
+                let allEmployees = [];
+                for (let i = 0; i < results.length; i++) {
+                    allEmployees.push({name: results[i].employees_first_name+" "+results[i].employees_last_name, value: results[i].employees_employee_id});
+                }
+                inquirer.prompt([
+                    {
+                        type: 'list',
+                        name: 'name',
+                        message: "Who is the employees manager?",
+                        choices: allEmployees
+                    }
+                ])
+            })
+        })
         .then(response => {
-            const newEmployee = [response.firstName, response.lastName, response.role, response.manager] 
+            answer.manager = response;
+            const newEmployee = [answer.firstname, answer.lastname, answer.role, answer.manager] 
             console.log(newEmployee);
             connection.connect(function(err) {
                 if (err) throw err;
@@ -191,8 +227,9 @@ const addDepartment = () => {
                    initialQuestions();
                 });
               });
-        })}
-        function updateEmployee(){
-        }
-        
-     
+        })
+    })} 
+
+
+        // function updateEmployee(){
+        // }
